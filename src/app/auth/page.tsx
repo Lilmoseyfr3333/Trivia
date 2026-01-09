@@ -3,12 +3,15 @@
 import React, { useState } from "react";
 import AppShell from "@/components/AppShell";
 import { Button, Input, Pill, Textarea, Toast } from "@/components/ui";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, supabaseEnabled } from "@/lib/supabaseClient";
 import { upsertMyProfile } from "@/lib/db";
 import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
   const router = useRouter();
+
+  const enabled = supabaseEnabled();
+
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -26,6 +29,11 @@ export default function AuthPage() {
   }
 
   async function submit() {
+    if (!enabled || !supabase) {
+      showToast("Auth is not configured. Add Supabase env vars on Vercel / .env.local.");
+      return;
+    }
+
     setBusy(true);
     try {
       if (mode === "signin") {
@@ -37,7 +45,7 @@ export default function AuthPage() {
         const { error } = await supabase.auth.signUp({ email, password: pw });
         if (error) throw error;
 
-        // Create/Upsert profile (safe even if they confirm email later)
+        // Upsert profile (safe even if email confirmation is enabled)
         await upsertMyProfile({ displayName, username, bio });
 
         showToast("Account created.");
@@ -64,9 +72,21 @@ export default function AuthPage() {
           <h1 className="mt-4 text-2xl sm:text-3xl font-black tracking-tight">
             {mode === "signin" ? "Welcome back." : "Create your profile."}
           </h1>
+
           <p className="mt-2 text-sm muted max-w-xl">
-            You can play without signing in. But creating quizzes + saving them to your profile needs an account.
+            You can play without signing in. Creating quizzes + saving them to your profile needs an account.
           </p>
+
+          {!enabled ? (
+            <div className="mt-4 card p-4 border border-[rgba(239,68,68,0.22)] bg-[rgba(239,68,68,0.06)]">
+              <div className="text-sm font-extrabold text-[#b91c1c]">Supabase not configured.</div>
+              <div className="text-xs muted mt-1">
+                Add <span className="font-semibold">NEXT_PUBLIC_SUPABASE_URL</span> and{" "}
+                <span className="font-semibold">NEXT_PUBLIC_SUPABASE_ANON_KEY</span> to Vercel Environment Variables
+                (and restart locally after editing <span className="font-semibold">.env.local</span>).
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-5 flex gap-2">
             <Button variant={mode === "signin" ? "primary" : "secondary"} onClick={() => setMode("signin")}>
@@ -82,6 +102,7 @@ export default function AuthPage() {
               <div className="text-xs font-bold muted mb-1.5">Email</div>
               <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" />
             </div>
+
             <div>
               <div className="text-xs font-bold muted mb-1.5">Password</div>
               <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" />
@@ -95,16 +116,19 @@ export default function AuthPage() {
                 </div>
                 <div>
                   <div className="text-xs font-bold muted mb-1.5">Username (optional)</div>
-                  <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g., willstarr" />
+                  <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g., lilmoseyfr3333" />
                 </div>
                 <div>
                   <div className="text-xs font-bold muted mb-1.5">Bio (optional)</div>
-                  <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="One sentence. Keep it clean." />
+                  <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="One clean sentence." />
                 </div>
               </>
             ) : null}
 
-            <Button onClick={submit} disabled={busy || !email.trim() || !pw.trim()}>
+            <Button
+              onClick={submit}
+              disabled={busy || !enabled || !email.trim() || !pw.trim()}
+            >
               {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </div>
@@ -122,7 +146,7 @@ export default function AuthPage() {
           <div className="mt-6 card px-5 py-4">
             <div className="text-xs muted font-semibold">Still can play as guest</div>
             <div className="mt-1 text-sm font-extrabold">
-              Yes — play is public. Creation is for signed-in users.
+              Yep — play is public. Creation is the perk.
             </div>
           </div>
         </div>

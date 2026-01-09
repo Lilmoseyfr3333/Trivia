@@ -1,18 +1,36 @@
-import type { Quiz, QuizItem, PlayResult } from "./types";
-import { supabase } from "./supabaseClient";
-import { uuid } from "./utils";
+// src/lib/db.ts
+import type { Quiz } from "./types";
+import { supabase, supabaseEnabled } from "./supabaseClient";
 
 export type SessionUser = { id: string; email?: string | null };
 
+function requireSupabase() {
+  if (!supabaseEnabled() || !supabase) {
+    // Make it explicit: production must set env vars for auth/profile.
+    throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+  return supabase;
+}
+
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const { data } = await supabase.auth.getUser();
+  if (!supabaseEnabled() || !supabase) return null;
+  const sb = supabase;
+
+  const { data, error } = await sb.auth.getUser();
+  if (error) return null;
   const u = data.user;
   if (!u) return null;
   return { id: u.id, email: u.email };
 }
 
+/* ----------------------------
+   Quizzes
+---------------------------- */
+
 export async function fetchPublicQuizzes(): Promise<Quiz[]> {
-  const { data, error } = await supabase
+  const sb = requireSupabase();
+
+  const { data, error } = await sb
     .from("quizzes")
     .select("*")
     .eq("is_public", true)
@@ -35,10 +53,11 @@ export async function fetchPublicQuizzes(): Promise<Quiz[]> {
 }
 
 export async function fetchMyQuizzes(): Promise<Quiz[]> {
+  const sb = requireSupabase();
   const user = await getSessionUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("quizzes")
     .select("*")
     .eq("owner_id", user.id)
@@ -61,15 +80,12 @@ export async function fetchMyQuizzes(): Promise<Quiz[]> {
 }
 
 export async function fetchQuizWithItems(quizId: string): Promise<Quiz | null> {
-  const { data: q, error: e1 } = await supabase
-    .from("quizzes")
-    .select("*")
-    .eq("id", quizId)
-    .single();
+  const sb = requireSupabase();
 
+  const { data: q, error: e1 } = await sb.from("quizzes").select("*").eq("id", quizId).single();
   if (e1) return null;
 
-  const { data: items, error: e2 } = await supabase
+  const { data: items, error: e2 } = await sb
     .from("quiz_items")
     .select("*")
     .eq("quiz_id", quizId)
@@ -97,10 +113,11 @@ export async function fetchQuizWithItems(quizId: string): Promise<Quiz | null> {
 }
 
 export async function createQuizWithItems(input: Quiz): Promise<string> {
+  const sb = requireSupabase();
   const user = await getSessionUser();
   if (!user) throw new Error("Not signed in.");
 
-  const { data: q, error: e1 } = await supabase
+  const { data: q, error: e1 } = await sb
     .from("quizzes")
     .insert({
       owner_id: user.id,
@@ -124,17 +141,18 @@ export async function createQuizWithItems(input: Quiz): Promise<string> {
     sort_order: idx,
   }));
 
-  const { error: e2 } = await supabase.from("quiz_items").insert(rows);
+  const { error: e2 } = await sb.from("quiz_items").insert(rows);
   if (e2) throw e2;
 
   return q.id;
 }
 
 export async function updateQuizWithItems(quizId: string, input: Quiz): Promise<void> {
+  const sb = requireSupabase();
   const user = await getSessionUser();
   if (!user) throw new Error("Not signed in.");
 
-  const { error: e1 } = await supabase
+  const { error: e1 } = await sb
     .from("quizzes")
     .update({
       title: input.title,
@@ -149,8 +167,7 @@ export async function updateQuizWithItems(quizId: string, input: Quiz): Promise<
 
   if (e1) throw e1;
 
-  // Replace items: simplest & safe.
-  const { error: eDel } = await supabase.from("quiz_items").delete().eq("quiz_id", quizId);
+  const { error: eDel } = await sb.from("quiz_items").delete().eq("quiz_id", quizId);
   if (eDel) throw eDel;
 
   const rows = input.items.map((it, idx) => ({
@@ -161,16 +178,22 @@ export async function updateQuizWithItems(quizId: string, input: Quiz): Promise<
     sort_order: idx,
   }));
 
-  const { error: e2 } = await supabase.from("quiz_items").insert(rows);
+  const { error: e2 } = await sb.from("quiz_items").insert(rows);
   if (e2) throw e2;
 }
 
-export async function deleteQuiz(quizId: string): Promise<void> {
+export async function deleteQuizDb(quizId: string): Promise<void> {
+  const sb = requireSupabase();
   const user = await getSessionUser();
   if (!user) throw new Error("Not signed in.");
-  const { error } = await supabase.from("quizzes").delete().eq("id", quizId).eq("owner_id", user.id);
+
+  const { error } = await sb.from("quizzes").delete().eq("id", quizId).eq("owner_id", user.id);
   if (error) throw error;
 }
+
+/* ----------------------------
+   Plays (anonymous allowed)
+---------------------------- */
 
 export async function insertPlay(args: {
   quizId: string;
@@ -181,8 +204,10 @@ export async function insertPlay(args: {
   durationSec: number;
   anonId: string;
 }) {
+  const sb = requireSupabase();
   const user = await getSessionUser();
-  const { error } = await supabase.from("plays").insert({
+
+  const { error } = await sb.from("plays").insert({
     quiz_id: args.quizId,
     user_id: user?.id ?? null,
     anon_id: user?.id ? null : args.anonId,
@@ -192,15 +217,23 @@ export async function insertPlay(args: {
     total_count: args.totalCount,
     duration_sec: args.durationSec,
   });
+
   if (error) throw error;
 }
 
+/* ----------------------------
+   Profile
+---------------------------- */
+
 export async function fetchMyProfile() {
+  const sb = requireSupabase();
   const user = await getSessionUser();
   if (!user) return null;
 
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-  if (error) return { id: user.id, display_name: "", username: "", bio: "" };
+  const { data, error } = await sb.from("profiles").select("*").eq("id", user.id).single();
+  if (error) {
+    return { id: user.id, displayName: "", username: "", bio: "", email: user.email ?? "" };
+  }
 
   return {
     id: data.id,
@@ -212,10 +245,11 @@ export async function fetchMyProfile() {
 }
 
 export async function upsertMyProfile(input: { displayName: string; username: string; bio: string }) {
+  const sb = requireSupabase();
   const user = await getSessionUser();
   if (!user) throw new Error("Not signed in.");
 
-  const { error } = await supabase.from("profiles").upsert({
+  const { error } = await sb.from("profiles").upsert({
     id: user.id,
     display_name: input.displayName,
     username: input.username || null,
