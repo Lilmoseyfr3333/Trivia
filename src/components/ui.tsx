@@ -1,11 +1,20 @@
+// src/components/ui.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+
+/**
+ * Small UI kit for the app.
+ * IMPORTANT: Input/Textarea use forwardRef so pages can pass refs without TS errors.
+ */
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+/* -------------------------------------------
+   Button
+------------------------------------------- */
 export function Button({
   variant = "primary",
   size = "md",
@@ -17,6 +26,7 @@ export function Button({
 }) {
   const base =
     "inline-flex items-center justify-center gap-2 font-semibold rounded-[18px] transition active:scale-[0.99] focus:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(37,99,235,0.18)] disabled:opacity-50 disabled:cursor-not-allowed";
+
   const sizes =
     size === "sm"
       ? "h-9 px-3 text-sm"
@@ -36,12 +46,16 @@ export function Button({
   return <button className={cn(base, sizes, styles, className)} {...props} />;
 }
 
-export function Input({
-  className,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+/* -------------------------------------------
+   Input (forwardRef)
+------------------------------------------- */
+export const Input = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(function Input({ className, ...props }, ref) {
   return (
     <input
+      ref={ref}
       className={cn(
         "h-11 w-full rounded-[18px] bg-white border strong-border px-4 text-[15px] outline-none",
         "focus:ring-4 focus:ring-[rgba(37,99,235,0.14)] focus:border-[rgba(37,99,235,0.35)]",
@@ -51,8 +65,11 @@ export function Input({
       {...props}
     />
   );
-}
+});
 
+/* -------------------------------------------
+   Select
+------------------------------------------- */
 export function Select({
   className,
   ...props
@@ -60,7 +77,7 @@ export function Select({
   return (
     <select
       className={cn(
-        "h-11 w-full rounded-[18px] bg-white border strong-border px-4 text-[15px] outline-none",
+        "h-11 w-full rounded-[18px] bg-white border strong-border px-4 text-[15px] outline-none appearance-none",
         "focus:ring-4 focus:ring-[rgba(37,99,235,0.14)] focus:border-[rgba(37,99,235,0.35)]",
         className
       )}
@@ -69,12 +86,16 @@ export function Select({
   );
 }
 
-export function Textarea({
-  className,
-  ...props
-}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+/* -------------------------------------------
+   Textarea (forwardRef)
+------------------------------------------- */
+export const Textarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+>(function Textarea({ className, ...props }, ref) {
   return (
     <textarea
+      ref={ref}
       className={cn(
         "min-h-[120px] w-full rounded-[18px] bg-white border strong-border px-4 py-3 text-[15px] outline-none resize-y",
         "focus:ring-4 focus:ring-[rgba(37,99,235,0.14)] focus:border-[rgba(37,99,235,0.35)]",
@@ -84,8 +105,11 @@ export function Textarea({
       {...props}
     />
   );
-}
+});
 
+/* -------------------------------------------
+   Pill
+------------------------------------------- */
 export function Pill({
   children,
   tone = "neutral",
@@ -109,18 +133,16 @@ export function Pill({
   );
 }
 
+/* -------------------------------------------
+   Divider
+------------------------------------------- */
 export function Divider() {
   return <div className="h-px w-full bg-[rgba(15,23,42,0.08)]" />;
 }
 
-export function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="inline-flex items-center justify-center rounded-md border strong-border bg-white px-2 py-1 text-xs font-semibold text-[#0F172A] shadow-[0_4px_10px_rgba(15,23,42,0.06)]">
-      {children}
-    </kbd>
-  );
-}
-
+/* -------------------------------------------
+   Stat card
+------------------------------------------- */
 export function Stat({
   label,
   value,
@@ -139,19 +161,19 @@ export function Stat({
   );
 }
 
+/* -------------------------------------------
+   useMounted (avoids localStorage hydration mismatch)
+------------------------------------------- */
 export function useMounted() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   return mounted;
 }
 
-export function Toast({
-  message,
-  show,
-}: {
-  message: string;
-  show: boolean;
-}) {
+/* -------------------------------------------
+   Toast (lightweight, no dependency)
+------------------------------------------- */
+export function Toast({ message, show }: { message: string; show: boolean }) {
   return (
     <div
       className={cn(
@@ -159,9 +181,7 @@ export function Toast({
         show ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
       )}
     >
-      <div className="card-strong px-4 py-2.5 text-sm font-semibold">
-        {message}
-      </div>
+      <div className="card-strong px-4 py-2.5 text-sm font-semibold">{message}</div>
     </div>
   );
 }

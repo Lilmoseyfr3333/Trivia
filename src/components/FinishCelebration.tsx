@@ -12,10 +12,6 @@ type Particle = {
   x: number;
   y: number;
   r: number;
-  dx: number;
-  dy: number;
-  rot: number;
-  drot: number;
   life: number;
 };
 
@@ -33,27 +29,20 @@ export default function FinishCelebration({
   const [phase, setPhase] = useState<"in" | "out">("in");
 
   const particles = useMemo<Particle[]>(() => {
-    const count = 46;
-    return Array.from({ length: count }).map((_, i) => ({
+    return Array.from({ length: 46 }).map((_, i) => ({
       id: String(i),
-      x: rand(35, 65),
-      y: rand(35, 50),
+      x: rand(10, 90),
+      y: rand(20, 55),
       r: rand(2, 5),
-      dx: rand(-0.9, 0.9),
-      dy: rand(1.2, 2.4),
-      rot: rand(0, 360),
-      drot: rand(-6, 6),
-      life: rand(600, 1200),
+      life: rand(650, 1250),
     }));
   }, []);
 
   useEffect(() => {
     if (!show) return;
     setPhase("in");
-
-    const t1 = window.setTimeout(() => setPhase("out"), 1300);
+    const t1 = window.setTimeout(() => setPhase("out"), 1350);
     const t2 = window.setTimeout(() => onDone?.(), 1750);
-
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
@@ -78,7 +67,6 @@ export default function FinishCelebration({
       )}
     >
       <div className="relative w-[min(560px,92vw)]">
-        {/* particles */}
         <div className="absolute inset-0 overflow-hidden rounded-[26px] pointer-events-none">
           {particles.map((p) => (
             <div
@@ -89,13 +77,12 @@ export default function FinishCelebration({
                 top: `${p.y}%`,
                 width: `${p.r * 3}px`,
                 height: `${p.r * 3}px`,
-                background:
-                  Math.random() > 0.5 ? "rgba(37,99,235,0.95)" : "rgba(22,163,74,0.92)",
+                background: Math.random() > 0.5 ? "rgba(37,99,235,0.95)" : "rgba(22,163,74,0.92)",
                 boxShadow: "0 12px 22px rgba(15,23,42,0.20)",
-                transform: `translate(-50%,-50%) rotate(${p.rot}deg)`,
+                transform: "translate(-50%,-50%)",
                 animation: `btBurst ${p.life}ms ease-out forwards`,
                 animationDelay: `${rand(0, 120)}ms`,
-              } as any}
+              }}
             />
           ))}
         </div>
@@ -106,7 +93,7 @@ export default function FinishCelebration({
           </div>
 
           <div className="mt-4 text-2xl sm:text-3xl font-black tracking-tight">{headline}</div>
-          <div className="mt-2 text-sm muted">{subtitle ?? "Result saved. Your ego is safe."}</div>
+          <div className="mt-2 text-sm muted">{subtitle ?? "Result saved."}</div>
 
           <div className="mt-5">
             <div className="text-4xl font-black">{scorePct}%</div>
@@ -123,7 +110,7 @@ export default function FinishCelebration({
       <style jsx global>{`
         @keyframes btBurst {
           from { transform: translate(-50%,-50%) translate3d(0,0,0) scale(1); opacity: 1; }
-          to   { transform: translate(-50%,-50%) translate3d(var(--dx, 0px), 320px, 0) scale(0.9); opacity: 0; }
+          to   { transform: translate(-50%,-50%) translate3d(0,320px,0) scale(0.9); opacity: 0; }
         }
       `}</style>
     </div>

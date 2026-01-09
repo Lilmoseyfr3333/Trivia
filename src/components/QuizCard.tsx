@@ -3,7 +3,7 @@
 import Link from "next/link";
 import React from "react";
 import type { Quiz } from "@/lib/types";
-import { Button, Pill, cn } from "./ui";
+import { Button, Pill } from "@/components/ui";
 
 export default function QuizCard({
   quiz,
@@ -21,14 +21,16 @@ export default function QuizCard({
     : "red";
 
   return (
-    <div className={cn("card-strong p-5 flex flex-col gap-4", "hover:shadow-[0_20px_76px_rgba(15,23,42,0.12)] transition")}>
+    <div className="card-strong p-5 flex flex-col gap-4 hover:shadow-[0_20px_76px_rgba(15,23,42,0.12)] transition">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-lg font-extrabold leading-tight truncate">
             {quiz.title || "Untitled quiz"}
           </div>
           <div className="text-sm muted mt-1 line-clamp-2">
-            {quiz.description?.trim() ? quiz.description : "No description. (That’s fine — the quiz better slap.)"}
+            {quiz.description?.trim()
+              ? quiz.description
+              : "No description. (That’s fine — just make the quiz good.)"}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Pill tone="neutral">{quiz.category}</Pill>
@@ -49,10 +51,10 @@ export default function QuizCard({
 
       <div className="flex items-center gap-2">
         <Link href={`/quiz/${quiz.id}/play`} className="flex-1">
-          <Button className="w-full" size="md">Play</Button>
+          <Button className="w-full">Play</Button>
         </Link>
         <Link href={`/quiz/${quiz.id}`} className="flex-1">
-          <Button className="w-full" variant="secondary" size="md">Details</Button>
+          <Button className="w-full" variant="secondary">Details</Button>
         </Link>
       </div>
     </div>
